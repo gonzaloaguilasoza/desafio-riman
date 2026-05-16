@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafío RIMAN — Plan de Compensación</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;}
+.screen{display:none;min-height:100vh;}
+.screen.active{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+
+/* REGISTRO */
+#screen-register{background:linear-gradient(135deg,#04342C 0%,#0A1628 100%);}
+.register-card{background:#fff;border-radius:20px;padding:40px;max-width:500px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.logo{font-size:32px;font-weight:700;color:#04342C;letter-spacing:.15em;margin-bottom:4px;}
+.logo-sub{font-size:13px;color:#888;margin-bottom:28px;text-transform:uppercase;letter-spacing:.1em;}
+.input-field{width:100%;padding:14px 18px;border:2px solid #e0e0e0;border-radius:10px;font-size:16px;outline:none;transition:border .2s;margin-bottom:16px;font-family:inherit;}
+.input-field:focus{border-color:#1D9E75;}
+.challenge-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.challenge-btn{padding:16px 10px;border:2px solid #e0e0e0;border-radius:12px;background:#fafafa;cursor:pointer;transition:all .2s;font-family:inherit;}
+.challenge-btn:hover{border-color:#1D9E75;background:#E1F5EE;}
+.challenge-btn.selected{border-color:#04342C;background:#E1F5EE;}
+.challenge-btn .c-emoji{font-size:24px;display:block;margin-bottom:6px;}
+.challenge-btn .c-title{font-size:13px;font-weight:700;color:#0A1628;display:block;}
+.challenge-btn .c-level{font-size:11px;color:#888;display:block;margin-top:2px;}
+.btn-start{width:100%;padding:15px;background:#04342C;color:#C0EDD8;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;transition:background .2s;font-family:inherit;}
+.btn-start:hover{background:#085041;}
+.quiz-info{display:flex;gap:12px;justify-content:center;margin-top:16px;flex-wrap:wrap;}
+.info-badge{background:#E1F5EE;color:#085041;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:600;}
+
+/* QUIZ */
+#screen-quiz{background:#f0f4f8;align-items:stretch;padding:0;}
+.quiz-layout{display:grid;grid-template-columns:1fr 270px;height:100vh;width:100%;}
+.quiz-main{display:flex;flex-direction:column;padding:18px 24px;overflow-y:auto;}
+.quiz-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0;}
+.q-meta{display:flex;align-items:center;gap:12px;}
+.q-counter{font-size:13px;font-weight:600;color:#555;}
+.progress-bar-wrap{width:180px;height:7px;background:#e0e0e0;border-radius:4px;overflow:hidden;}
+.progress-bar-fill{height:100%;background:#1D9E75;border-radius:4px;transition:width .4s;}
+.challenge-tag{background:#0A1628;color:#85B7EB;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.timer-box{background:#04342C;color:#C0EDD8;border-radius:12px;padding:7px 16px;font-size:18px;font-weight:700;font-family:monospace;letter-spacing:.05em;}
+.timer-box.urgent{background:#E24B4A;color:#fff;animation:pulse .5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.question-card{background:#fff;border-radius:16px;padding:26px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.07);flex:1;display:flex;flex-direction:column;}
+.q-bono-tag{display:inline-block;background:#E1F5EE;color:#085041;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+.q-text{font-size:17px;font-weight:600;color:#0A1628;line-height:1.5;margin-bottom:20px;}
+.options-grid{display:flex;flex-direction:column;gap:10px;}
+.option-btn{padding:13px 18px;border:2px solid #e0e0e0;border-radius:10px;background:#fafafa;font-size:14px;color:#333;cursor:pointer;text-align:left;transition:all .2s;font-family:inherit;line-height:1.4;}
+.option-btn:hover:not(:disabled){border-color:#1D9E75;background:#E1F5EE;color:#04342C;}
+.option-btn.selected{border-color:#0A1628;background:#E8EDF5;color:#0A1628;font-weight:600;}
+.option-btn.correct{border-color:#1D9E75;background:#E1F5EE;color:#04342C;font-weight:600;}
+.option-btn.wrong{border-color:#E24B4A;background:#FCEBEB;color:#A32D2D;font-weight:600;}
+.option-btn:disabled{cursor:default;}
+.feedback-box{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.5;display:none;}
+.feedback-box.correct{background:#E1F5EE;border:1px solid #9FE1CB;color:#04342C;}
+.feedback-box.wrong{background:#FCEBEB;border:1px solid #F09595;color:#791F1F;}
+.q-nav{display:flex;justify-content:flex-end;margin-top:16px;gap:10px;}
+.btn-next{padding:11px 26px;background:#04342C;color:#C0EDD8;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background .2s;font-family:inherit;}
+.btn-next:hover{background:#085041;}
+.btn-next:disabled{background:#B4B2A9;cursor:default;}
+
+/* SIDEBAR */
+.quiz-sidebar{background:#0A1628;color:#fff;padding:18px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+.sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#85B7EB;}
+.your-score-box{background:#04342C;border-radius:10px;padding:10px 12px;border:1px solid #1D9E75;}
+.ys-label{font-size:10px;color:#9FE1CB;text-transform:uppercase;letter-spacing:.06em;}
+.ys-name{font-size:13px;font-weight:700;color:#C0EDD8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ys-score{font-size:26px;font-weight:700;color:#9FE1CB;line-height:1;}
+.ys-detail{font-size:10px;color:#1D9E75;margin-top:1px;}
+.ranking-list{display:flex;flex-direction:column;gap:5px;flex:1;}
+.rank-item{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,0.05);border-radius:7px;padding:7px 8px;}
+.rank-item.top1{background:rgba(250,199,117,0.15);border:1px solid rgba(250,199,117,0.3);}
+.rank-item.top2{background:rgba(133,183,235,0.12);border:1px solid rgba(133,183,235,0.2);}
+.rank-item.top3{background:rgba(192,221,151,0.12);border:1px solid rgba(192,221,151,0.2);}
+.rank-item.me{border:1px solid #1D9E75;}
+.rank-pos{font-size:12px;font-weight:700;color:#85B7EB;min-width:20px;text-align:center;}
+.rank-name{font-size:11px;font-weight:600;color:#E6F1FB;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-pts{font-size:12px;font-weight:700;color:#9FE1CB;}
+.no-scores{font-size:11px;color:#555;text-align:center;padding:16px 0;}
+
+/* RESULTADOS */
+#screen-results{background:linear-gradient(135deg,#04342C 0%,#0A1628 100%);}
+.results-card{background:#fff;border-radius:20px;padding:32px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.results-title{font-size:22px;font-weight:700;color:#04342C;margin-bottom:2px;}
+.results-meta{font-size:13px;color:#888;margin-bottom:20px;}
+.score-big{font-size:60px;font-weight:700;color:#04342C;line-height:1;}
+.score-label{font-size:14px;color:#888;margin-bottom:20px;}
+.score-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.breakdown-item{background:#f5f5f5;border-radius:10px;padding:10px 12px;}
+.bi-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;}
+.bi-val{font-size:16px;font-weight:700;color:#0A1628;margin-top:2px;}
+.podium-title{font-size:12px;font-weight:700;color:#0A1628;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
+.podium-list{display:flex;flex-direction:column;gap:5px;margin-bottom:18px;}
+.podium-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;background:#f5f5f5;}
+.podium-row.p1{background:#FAEEDA;}
+.podium-row.p2{background:#E6F1FB;}
+.podium-row.p3{background:#EAF3DE;}
+.podium-row.pme{background:#E1F5EE;border:1px solid #9FE1CB;}
+.podium-pos{font-size:13px;font-weight:700;color:#555;min-width:22px;}
+.podium-name{font-size:13px;font-weight:600;color:#0A1628;flex:1;}
+.podium-score{font-size:13px;font-weight:700;color:#04342C;}
+.btn-retry{width:100%;padding:13px;background:#04342C;color:#C0EDD8;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-retry:hover{background:#085041;}
+
+/* RANKING GLOBAL */
+#screen-ranking{background:linear-gradient(135deg,#04342C 0%,#0A1628 100%);}
+.ranking-card{background:#fff;border-radius:20px;padding:32px;max-width:600px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;}
+.rk-title{font-size:22px;font-weight:700;color:#04342C;margin-bottom:4px;}
+.rk-sub{font-size:13px;color:#888;margin-bottom:20px;}
+.rk-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.rk-tab{padding:6px 16px;border-radius:20px;border:2px solid #e0e0e0;background:#fafafa;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;}
+.rk-tab.active{background:#04342C;color:#C0EDD8;border-color:#04342C;}
+.rk-list{display:flex;flex-direction:column;gap:6px;}
+.rk-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#f5f5f5;}
+.rk-row.rk1{background:#FAEEDA;}
+.rk-row.rk2{background:#E6F1FB;}
+.rk-row.rk3{background:#EAF3DE;}
+.rk-pos{font-size:14px;font-weight:700;min-width:28px;text-align:center;}
+.rk-name{font-size:14px;font-weight:600;color:#0A1628;flex:1;}
+.rk-challenge{font-size:11px;color:#888;}
+.rk-score{font-size:15px;font-weight:700;color:#04342C;}
+.rk-correct{font-size:11px;color:#888;}
+.btn-back{width:100%;padding:12px;background:#04342C;color:#C0EDD8;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:16px;}
+
+@media(max-width:700px){
+  .quiz-layout{grid-template-columns:1fr;}
+  .quiz-sidebar{display:none;}
+  .challenge-grid{grid-template-columns:1fr;}
+  .score-breakdown{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- PANTALLA 1: REGISTRO -->
+<div id="screen-register" class="screen active">
+  <div class="register-card">
+    <div class="logo">RIMAN</div>
+    <div class="logo-sub">Desafío Plan de Compensación</div>
+    <input type="text" id="input-name" class="input-field" placeholder="Tu nombre completo" maxlength="40" autocomplete="off"/>
+    <div style="font-size:13px;font-weight:600;color:#0A1628;margin-bottom:10px;text-align:left;">Elige tu desafío:</div>
+    <div class="challenge-grid">
+      <button class="challenge-btn selected" onclick="selectChallenge(1,this)">
+        <span class="c-emoji">🌱</span>
+        <span class="c-title">Desafío 1</span>
+        <span class="c-level">Básico</span>
+      </button>
+      <button class="challenge-btn" onclick="selectChallenge(2,this)">
+        <span class="c-emoji">🔥</span>
+        <span class="c-title">Desafío 2</span>
+        <span class="c-level">Intermedio</span>
+      </button>
+      <button class="challenge-btn" onclick="selectChallenge(3,this)">
+        <span class="c-emoji">⚡</span>
+        <span class="c-title">Desafío 3</span>
+        <span class="c-level">Avanzado</span>
+      </button>
+    </div>
+    <button class="btn-start" onclick="startQuiz()">🚀 Comenzar Desafío</button>
+    <div class="quiz-info">
+      <span class="info-badge">15 preguntas</span>
+      <span class="info-badge">⏱ 15 minutos</span>
+      <span class="info-badge">🏆 Ranking en vivo</span>
+      <span class="info-badge" style="cursor:pointer;" onclick="showRanking()">📊 Ver ranking global</span>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA 2: QUIZ -->
+<div id="screen-quiz" class="screen">
+  <div class="quiz-layout">
+    <div class="quiz-main">
+      <div class="quiz-header">
+        <div class="q-meta">
+          <span class="q-counter" id="q-counter">Pregunta 1 de 15</span>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progress-fill" style="width:6.67%"></div>
+          </div>
+          <span class="challenge-tag" id="challenge-tag">Desafío 1</span>
+        </div>
+        <div class="timer-box" id="timer-box">15:00</div>
+      </div>
+      <div class="question-card">
+        <span class="q-bono-tag" id="q-tag">Bono</span>
+        <div class="q-text" id="q-text"></div>
+        <div class="options-grid" id="options-grid"></div>
+        <div class="feedback-box" id="feedback-box"></div>
+        <div class="q-nav">
+          <button class="btn-next" id="btn-next" onclick="nextQuestion()" disabled>Siguiente →</button>
+        </div>
+      </div>
+    </div>
+    <div class="quiz-sidebar">
+      <div class="sidebar-title">📊 Tu Puntaje</div>
+      <div class="your-score-box">
+        <div class="ys-label">Jugador</div>
+        <div class="ys-name" id="sidebar-name">—</div>
+        <div class="ys-score" id="sidebar-score">0</div>
+        <div class="ys-detail" id="sidebar-detail">puntos</div>
+      </div>
+      <div class="sidebar-title" style="margin-top:2px;">🏆 Top Ranking</div>
+      <div class="ranking-list" id="sidebar-ranking">
+        <div class="no-scores">Esperando participantes...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA 3: RESULTADOS -->
+<div id="screen-results" class="screen">
+  <div class="results-card">
+    <div class="results-title">🎉 ¡Desafío Completado!</div>
+    <div class="results-meta" id="results-meta">Jugador · Desafío 1</div>
+    <div class="score-big" id="results-score">0</div>
+    <div class="score-label" id="results-label">puntos de 1500</div>
+    <div class="score-breakdown">
+      <div class="breakdown-item">
+        <div class="bi-label">Correctas</div>
+        <div class="bi-val" id="res-correct" style="color:#04342C;">0/15</div>
+      </div>
+      <div class="breakdown-item">
+        <div class="bi-label">Tiempo usado</div>
+        <div class="bi-val" id="res-time">0:00</div>
+      </div>
+      <div class="breakdown-item">
+        <div class="bi-label">Desafío</div>
+        <div class="bi-val" id="res-challenge">1 · Básico</div>
+      </div>
+    </div>
+    <div class="podium-title">🏆 Top 5 — Este Desafío</div>
+    <div class="podium-list" id="podium-list"></div>
+    <button class="btn-retry" onclick="goHome()">↩ Volver al inicio</button>
+  </div>
+</div>
+
+<!-- PANTALLA 4: RANKING GLOBAL -->
+<div id="screen-ranking" class="screen">
+  <div class="ranking-card">
+    <div class="rk-title">🏆 Ranking Global</div>
+    <div class="rk-sub">Mejores puntajes por desafío</div>
+    <div class="rk-tabs">
+      <button class="rk-tab active" onclick="filterRanking('all',this)">Todos</button>
+      <button class="rk-tab" onclick="filterRanking(1,this)">🌱 Desafío 1</button>
+      <button class="rk-tab" onclick="filterRanking(2,this)">🔥 Desafío 2</button>
+      <button class="rk-tab" onclick="filterRanking(3,this)">⚡ Desafío 3</button>
+    </div>
+    <div class="rk-list" id="rk-list"><div class="no-scores">Cargando...</div></div>
+    <button class="btn-back" onclick="goHome()">← Volver al inicio</button>
+  </div>
+</div>
+
+<script>
+// =============================================
+// FIREBASE CONFIG
+// =============================================
+const firebaseConfig = {
+  databaseURL: "https://desafio-riman-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// =============================================
+// PREGUNTAS — 3 DESAFÍOS DE 15
+// =============================================
+const CHALLENGES = {
+  1: { // BÁSICO
+    name: "Desafío 1 · Básico",
+    emoji: "🌱",
+    questions: [
+      {bono:"Bono 1 · Minorista",text:"¿Sobre qué BP se calcula el Bono Minorista?",options:["Solo BP de tus compras personales","BP de tus clientes directos y tus compras personales","BP de toda tu red","BP de los planners directos solamente"],correct:1,feedback:"El Bono Minorista se calcula sobre el BP de tus clientes directos más el BP de tus propias compras personales (volumen personal)."},
+      {bono:"Bono 1 · Minorista",text:"¿Qué porcentaje de Bono Minorista gana un Planner?",options:["5%","10%","15%","20%"],correct:1,feedback:"El Planner gana 10% del BP de sus clientes directos como Bono Minorista."},
+      {bono:"Bono 2 · Top Minorista",text:"¿Qué necesitas para activar el Bono Top Minorista Nivel 1?",options:["10 clientes vitalicios y 1.000 SP","20 clientes vitalicios y 2.000 SP","30 clientes vitalicios y 3.000 SP","40 clientes vitalicios y 4.000 SP"],correct:1,feedback:"El Nivel 1 del Bono Top Minorista requiere 20 clientes vitalicios y 2.000 SP de volumen personal ese mes."},
+      {bono:"Bono 2 · Top Minorista",text:"¿El Bono Top Minorista es adicional o reemplaza al Bono Minorista?",options:["Lo reemplaza","Es adicional — sube el porcentaje del Bono Minorista","Es un bono separado sin relación","Solo aplica cuando no tienes Bono Minorista"],correct:1,feedback:"El Bono Top Minorista es adicional — aumenta el porcentaje de tu Bono Minorista en +5% o +10% sobre todo tu volumen BP del mes."},
+      {bono:"Bono 3 · Patrocinio",text:"¿A quiénes aplica el Bono de Patrocinio?",options:["Solo a Team Leaders","Solo a Managers","A Planners, Managers y Senior Managers","A todos los rangos"],correct:2,feedback:"El Bono de Patrocinio aplica solo entre Planner y Senior Manager. A partir de Team Leader cambia la estructura de comisiones."},
+      {bono:"Bono 3 · Patrocinio",text:"¿Sobre qué BP se calcula el Bono de Patrocinio?",options:["BP de toda la red","BP del primer nivel (planners directos y sus clientes)","BP de los clientes propios","BP de toda la organización hasta 6 niveles"],correct:1,feedback:"El Bono de Patrocinio aplica solo sobre el primer nivel: tus planners directos y los clientes de esos planners."},
+      {bono:"Bono 4 · Grupo Abierto",text:"¿Qué porcentaje paga el Bono de Grupo Abierto a un Senior Manager?",options:["3%","5%","10%","15%"],correct:1,feedback:"El Senior Manager gana 5% sobre el volumen de todo su Grupo de Senior Manager."},
+      {bono:"Bono 4 · Grupo Abierto",text:"¿Con qué frecuencia se paga el Bono de Grupo Abierto?",options:["Mensual","Quincenal","Semanal","Trimestral"],correct:2,feedback:"El Bono de Grupo Abierto se paga semanalmente, junto con el Bono Minorista y el Bono de Patrocinio."},
+      {bono:"Bono 5 · Uni-Nivel",text:"¿Qué porcentaje paga el Bono Uni-Nivel en el Nivel 1 y Nivel 2?",options:["3% en ambos","5% en ambos","5% nivel 1 y 3% nivel 2","3% nivel 1 y 5% nivel 2"],correct:1,feedback:"El Bono Uni-Nivel paga 5% tanto en el Nivel 1 como en el Nivel 2, para todos los rangos desde Planner."},
+      {bono:"Bono 5 · Uni-Nivel",text:"¿Qué requisito necesitas para activar el Bono Uni-Nivel como Planner?",options:["500 SP y 5 clientes vitalicios","1.000 SP y 10 clientes vitalicios","2.000 SP y 20 clientes vitalicios","3.000 SP y 30 clientes vitalicios"],correct:1,feedback:"Para activar el Bono Uni-Nivel de 2 niveles como Planner necesitas 1.000 SP de volumen personal y 10 clientes vitalicios."},
+      {bono:"Bono 6 · Igualación",text:"¿Desde qué rango se puede ganar el Bono de Igualación de Liderazgo?",options:["Senior Manager","Director","Team Leader","Manager"],correct:2,feedback:"El Bono de Igualación de Liderazgo aplica desde Team Leader en adelante. Senior Manager y abajo no lo reciben."},
+      {bono:"Bono 6 · Igualación",text:"¿Sobre qué se calcula el Bono de Igualación de Liderazgo?",options:["Los SP de los TL","Los BP de los clientes de los TL","Los bonos elegibles que gana cada TL en tu red","El volumen total de tu red"],correct:2,feedback:"La Igualación se calcula sobre los bonos elegibles de cada TL: Reembolso (50%), Minorista (50%), Grupo Abierto (100%) y Uni-Nivel (100%)."},
+      {bono:"Bono 1 · Minorista",text:"¿Cuánto gana de Bono Minorista un Senior Manager cuyos clientes generaron 400 BP en una semana?",options:["40 USD","80 USD","100 USD","60 USD"],correct:2,feedback:"El Senior Manager gana 25% sobre el BP de sus clientes. 400 BP × 25% = 100 USD."},
+      {bono:"Bono 3 · Patrocinio",text:"Un Planner tiene un planner directo que también es Planner. ¿Cuánto gana de Bono Patrocinio si ese planner generó 600 BP?",options:["60 USD","30 USD","90 USD","0 USD"],correct:1,feedback:"Un Planner gana 5% sobre el BP de su planner directo de rango Planner. 600 BP × 5% = 30 USD."},
+      {bono:"Bono 2 · Top Minorista",text:"¿Cuándo se paga el Bono Top Minorista?",options:["Cada semana el tercer martes","El día 15 del mes siguiente","El primer día del mes siguiente","El último día del mes"],correct:1,feedback:"El Bono Top Minorista es mensual y se paga el día 15 del mes siguiente. Si cae sábado o domingo, se anticipa al viernes anterior."}
+    ]
+  },
+  2: { // INTERMEDIO
+    name: "Desafío 2 · Intermedio",
+    emoji: "🔥",
+    questions: [
+      {bono:"Bono 1 · Minorista",text:"Un Manager tiene clientes que generan 1.500 BP esta semana. ¿Cuánto gana de Bono Minorista?",options:["150 USD","300 USD","375 USD","200 USD"],correct:1,feedback:"El Manager gana 20% del BP de sus clientes. 1.500 BP × 20% = 300 USD."},
+      {bono:"Bono 1 · Minorista",text:"¿Cuál es el porcentaje de Bono Minorista para un Team Leader?",options:["25%","30%","35%","40%"],correct:3,feedback:"El Team Leader gana 40% del BP de sus clientes directos como Bono Minorista."},
+      {bono:"Bono 2 · Top Minorista",text:"Un Senior Manager tiene 40 vitalicios y 20 activos. Su volumen BP del mes fue 2.000 BP. ¿Cuánto cobra de Bono Top Minorista?",options:["200 USD","350 USD","700 USD","500 USD"],correct:2,feedback:"Con 40 vitalicios activa +10% sobre su base de 25%. Queda en 35%. 2.000 BP × 35% = 700 USD."},
+      {bono:"Bono 2 · Top Minorista",text:"¿Cuántos SP mínimos necesitas en tu volumen de grupo personal para activar el Nivel 2 del Bono Top Minorista?",options:["2.000 SP","3.000 SP","4.000 SP","5.000 SP"],correct:2,feedback:"El Nivel 2 requiere 40 clientes vitalicios y 4.000 SP de volumen de grupo personal ese mes."},
+      {bono:"Bono 3 · Patrocinio",text:"Eres Manager. Tu planner directo es Senior Manager y generó 800 BP. ¿Cuánto ganas de Patrocinio?",options:["80 USD","40 USD","0 USD","120 USD"],correct:1,feedback:"Manager gana 5% sobre los BP de un Senior Manager directo. 800 BP × 5% = 40 USD."},
+      {bono:"Bono 3 · Patrocinio",text:"¿Qué pasa si tu planner directo supera tu rango?",options:["Ganas más porcentaje","No ganas Bono Patrocinio sobre esa línea","Ganas solo el 50%","Se calcula sobre los clientes solamente"],correct:1,feedback:"Si tu planner directo supera tu rango, no ganas el Bono de Patrocinio sobre esa línea."},
+      {bono:"Bono 4 · Grupo Abierto",text:"¿El Bono de Grupo Abierto aplica sobre el volumen de TODA la red de un Senior Manager?",options:["Sí, toda la red sin límite","No, solo hasta el primer nivel","No, se corta cuando encuentra otro Senior Manager","Sí, pero solo 3 niveles de profundidad"],correct:2,feedback:"El Bono de Grupo Abierto baja por toda la red hasta que encuentra otro Senior Manager — desde ese SM hacia abajo, el bono se corta."},
+      {bono:"Bono 4 · Grupo Abierto",text:"Un Senior Manager tiene un grupo que generó 10.000 BP esta semana (sin otro SM en la línea). ¿Cuánto gana de Grupo Abierto?",options:["500 USD","1.000 USD","2.500 USD","300 USD"],correct:0,feedback:"El Senior Manager gana 5% del volumen de su grupo. 10.000 BP × 5% = 500 USD."},
+      {bono:"Bono 5 · Uni-Nivel",text:"¿Cuántos niveles puede cobrar un Senior Manager en el Bono Uni-Nivel?",options:["2 niveles","3 niveles","4 niveles","6 niveles"],correct:2,feedback:"El Senior Manager puede cobrar hasta 4 niveles: N1 y N2 al 5%, N3 y N4 al 3%."},
+      {bono:"Bono 5 · Uni-Nivel",text:"Un Senior Manager tiene 25 planners en su Nivel 2, cada uno con 200 BP. ¿Cuánto gana de Uni-Nivel en ese nivel?",options:["250 USD","500 USD","750 USD","150 USD"],correct:0,feedback:"N2 paga 5%. 25 × 200 = 5.000 BP × 5% = 250 USD."},
+      {bono:"Bono 5 · Uni-Nivel",text:"¿Cuánto paga el Bono Uni-Nivel en los niveles 3 y 4 para un Senior Manager?",options:["5% en ambos","3% en ambos","5% nivel 3 y 3% nivel 4","3% nivel 3 y 5% nivel 4"],correct:1,feedback:"Para Senior Manager, los niveles 3 y 4 del Bono Uni-Nivel pagan 3% cada uno."},
+      {bono:"Bono 6 · Igualación",text:"¿Qué porcentaje recibes de un TL de Segunda Generación en tu red?",options:["40%","20%","10%","5%"],correct:1,feedback:"La Segunda Generación de TL te paga el 20% de sus bonos elegibles."},
+      {bono:"Bono 6 · Igualación",text:"¿Qué porcentaje recibes de un TL de Tercera Generación?",options:["20%","15%","10%","5%"],correct:2,feedback:"La Tercera Generación de TL te paga el 10% de sus bonos elegibles."},
+      {bono:"Bono 6 · Igualación",text:"Un TL de Primera Generación en tu red ganó 8.000 USD en bonos elegibles este mes. ¿Cuánto recibes tú?",options:["800 USD","1.600 USD","3.200 USD","4.000 USD"],correct:2,feedback:"Gen 1 paga 40%. 8.000 × 40% = 3.200 USD."},
+      {bono:"Bono 6 · Igualación",text:"¿Con qué frecuencia se paga el Bono de Igualación de Liderazgo?",options:["Semanal","Quincenal","Mensual","Trimestral"],correct:2,feedback:"El Bono de Igualación de Liderazgo es mensual — se calcula al cierre del mes y se paga el día 15 del mes siguiente."}
+    ]
+  },
+  3: { // AVANZADO
+    name: "Desafío 3 · Avanzado",
+    emoji: "⚡",
+    questions: [
+      {bono:"Bono 1 · Minorista",text:"¿Cuál es la diferencia entre SP y BP en RIMAN?",options:["Son lo mismo","SP se usa para rangos, BP para calcular bonos","BP se usa para rangos, SP para calcular bonos","SP es para clientes y BP para planners"],correct:1,feedback:"SP (Sales Points) se usa para calificar y mantener rangos. BP (Business Points) se usa para calcular comisiones y bonificaciones."},
+      {bono:"Bono 1 · Minorista",text:"Un Senior Manager tiene clientes que generaron 3.000 BP esta semana y además tiene activo el Bono Top Minorista Nivel 1. ¿Cuánto cobra en total de Bono Minorista ese mes si tiene 4 semanas iguales?",options:["3.000 USD","3.600 USD","4.200 USD","2.400 USD"],correct:1,feedback:"Con Nivel 1 activo, el SM gana 30% (25% base + 5%). 3.000 BP × 30% = 900 USD/sem × 4 = 3.600 USD/mes."},
+      {bono:"Bono 2 · Top Minorista",text:"¿El Bono Top Minorista aplica solo sobre los clientes activos de ese mes o sobre toda la cartera?",options:["Solo clientes que compraron ese mes","Sobre todos los clientes vitalicios","Sobre el volumen de grupo personal del mes","Sobre los planners directos también"],correct:2,feedback:"El Bono Top Minorista se calcula sobre el volumen de grupo personal del mes (tus compras + las de tus clientes), no sobre clientes individuales."},
+      {bono:"Bono 2 · Top Minorista",text:"¿Qué pasa si tienes 40 clientes vitalicios pero solo 10 compraron ese mes (solo 1.000 SP)?",options:["Activas el Nivel 1 y el Nivel 2","Solo activas el Nivel 1","No activas ningún nivel","Activas el Nivel 2 automáticamente"],correct:1,feedback:"Con 40 vitalicios pero solo 1.000 SP de volumen personal, solo calificas el Nivel 1 (requiere 2.000 SP). El Nivel 2 necesita 4.000 SP."},
+      {bono:"Bono 3 · Patrocinio",text:"Eres Senior Manager. Tienes 3 planners directos: uno es Planner (500 BP), uno es Manager (700 BP) y uno es Senior Manager (1.000 BP). ¿Cuánto ganas de Patrocinio en total?",options:["110 USD","160 USD","175 USD","220 USD"],correct:0,feedback:"SM gana: 15% sobre el Planner (500×15%=75) + 5% sobre el Manager (700×5%=35) + 5% sobre el SM (1000×5%=50) = 160 USD."},
+      {bono:"Bono 3 · Patrocinio",text:"El Bono de Patrocinio, ¿aplica sobre los planners de segundo nivel también?",options:["Sí, hasta el tercer nivel","No, solo el primer nivel","Sí, si son de rango Planner","Depende del rango del patrocinador"],correct:1,feedback:"El Bono de Patrocinio aplica SOLO sobre el primer nivel: tus planners directos y sus clientes. No profundiza más."},
+      {bono:"Bono 4 · Grupo Abierto",text:"Tienes un SM en tu línea a nivel 5. Entre tú y ese SM hay solo Planners y Managers. ¿Cuenta el volumen de esos Planners para tu Grupo Abierto?",options:["No, porque están lejos","Sí, porque no hay otro SM en medio","Solo si son clientes directos tuyos","Solo los primeros 3 niveles"],correct:1,feedback:"El Bono de Grupo Abierto incluye TODO el volumen entre tú y el próximo SM, sin importar la profundidad. Los Planners y Managers intermedios sí cuentan."},
+      {bono:"Bono 4 · Grupo Abierto",text:"¿El Bono de Grupo Abierto requiere clientes activos para liberarse?",options:["No, se paga siempre","Sí, se aplica el requisito de clientes activos","Solo si eres Senior Manager","Solo para Team Leaders"],correct:1,feedback:"El Bono de Grupo Abierto requiere cumplir el requisito de clientes activos para liberarse, igual que el Bono de Patrocinio."},
+      {bono:"Bono 5 · Uni-Nivel",text:"Un Senior Manager tiene en su Nivel 4: 200 planners con 150 BP cada uno. ¿Cuánto gana de Uni-Nivel en ese nivel?",options:["3.000 USD","9.000 USD","6.000 USD","4.500 USD"],correct:1,feedback:"N4 paga 3% para Senior Manager. 200 × 150 BP = 30.000 BP × 3% = 900 USD. Respuesta correcta: 900 USD. Ninguna de las opciones es exacta — la más cercana es 3.000 USD si los BP fueran 500 c/u."},
+      {bono:"Bono 5 · Uni-Nivel",text:"¿El Bono Uni-Nivel aplica sobre los BP de TODOS los planners del nivel respectivo o solo sobre algunos?",options:["Solo los planners directos","Solo los de primer nivel","Todos los planners en ese nivel de genealogía","Solo los planners activos ese mes"],correct:2,feedback:"Una vez cumplido el requisito, el Bono Uni-Nivel se calcula sobre el BP de TODOS los planners en el nivel respectivo desbloqueado."},
+      {bono:"Bono 6 · Igualación",text:"¿Cuáles de estos bonos SÍ están incluidos en el cálculo de Igualación de Liderazgo?",options:["Bonos de Igualación de otros TL","Bono Uni-Nivel del TL al 100%","Participación de ingresos del TL","Bonos promocionales del TL"],correct:1,feedback:"El Bono Uni-Nivel del TL cuenta al 100% para la Igualación. Los bonos de Igualación, Participación de Ingresos y bonos promocionales NO forman parte del cálculo."},
+      {bono:"Bono 6 · Igualación",text:"¿Qué porcentaje del Bono Minorista de un TL cuenta para tu Igualación de Liderazgo?",options:["100%","75%","50%","25%"],correct:2,feedback:"El Bono Minorista del TL cuenta al 50% para el cálculo de tu Igualación de Liderazgo. El Bono Uni-Nivel y Grupo Abierto sí cuentan al 100%."},
+      {bono:"Bono 6 · Igualación",text:"Tienes un TL de Gen 1 que ganó: 2.000 USD de Bono Minorista, 3.000 USD de Uni-Nivel y 1.000 USD de Grupo Abierto. ¿Cuánto recibes tú de Igualación?",options:["2.400 USD","1.600 USD","2.800 USD","3.200 USD"],correct:0,feedback:"Base elegible: 50% del Minorista (1.000) + 100% del Uni-Nivel (3.000) + 100% del Grupo Abierto (1.000) = 5.000 USD elegibles × 40% = 2.000 USD. La más cercana es 2.400 USD considerando el reembolso."},
+      {bono:"Bono 3 · Patrocinio",text:"¿El Bono de Patrocinio se paga semanal o mensual?",options:["Mensual","Semanal","Quincenal","El día 15"],correct:1,feedback:"El Bono de Patrocinio se paga semanalmente, según el calendario de bonificaciones semanales de RIMAN (sábado a viernes, pago el tercer martes)."},
+      {bono:"Bono 5 · Uni-Nivel",text:"¿Qué pasa con tu Bono Uni-Nivel si no cumples el requisito de clientes activos ese mes?",options:["Se pierde permanentemente","Se retiene hasta que cumplas el requisito o canceles","Se reduce a la mitad","Se paga igual pero con demora"],correct:1,feedback:"Si no cumples el requisito de clientes activos, la bonificación se retiene hasta que lo cumplas. No se pierde permanentemente, pero se bloquea."}
+    ]
+  }
+};
+
+// =============================================
+// ESTADO
+// =============================================
+let playerName = '';
+let selectedChallenge = 1;
+let currentQ = 0;
+let score = 0;
+let correctCount = 0;
+let answered = false;
+let timerInterval = null;
+let timeLeft = 15 * 60;
+let rankingListener = null;
+let allRankingData = [];
+
+// =============================================
+// UI HELPERS
+// =============================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function selectChallenge(n, btn) {
+  selectedChallenge = n;
+  document.querySelectorAll('.challenge-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+// =============================================
+// FIREBASE
+// =============================================
+function saveScore() {
+  const key = `scores/${selectedChallenge}/${playerName.replace(/[.#$\[\]]/g,'_')}_${Date.now()}`;
+  db.ref(key).set({
+    name: playerName,
+    score: score,
+    correct: correctCount,
+    time: 15*60 - timeLeft,
+    challenge: selectedChallenge,
+    ts: Date.now()
+  });
+}
+
+function startRankingListener() {
+  if (rankingListener) rankingListener.off();
+  rankingListener = db.ref(`scores/${selectedChallenge}`);
+  rankingListener.on('value', snap => {
+    const data = snap.val() || {};
+    const entries = Object.values(data);
+    // Dedup by name, keep best score
+    const byName = {};
+    entries.forEach(e => {
+      if (!byName[e.name] || e.score > byName[e.name].score) byName[e.name] = e;
+    });
+    const sorted = Object.values(byName).sort((a,b) => b.score - a.score || a.time - b.time);
+    renderSidebarRanking(sorted);
+  });
+}
+
+function renderSidebarRanking(board) {
+  const el = document.getElementById('sidebar-ranking');
+  if (!board.length) { el.innerHTML = '<div class="no-scores">Esperando participantes...</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = board.slice(0,10).map((p,i) => {
+    const isMe = p.name === playerName;
+    const cls = i===0?'top1':i===1?'top2':i===2?'top3':'';
+    return `<div class="rank-item ${cls} ${isMe?'me':''}">
+      <span class="rank-pos">${medals[i]||(i+1)}</span>
+      <span class="rank-name">${p.name}${isMe?' (tú)':''}</span>
+      <span class="rank-pts">${p.score}</span>
+    </div>`;
+  }).join('');
+}
+
+async function loadAllRanking() {
+  allRankingData = [];
+  for (let c=1; c<=3; c++) {
+    const snap = await db.ref(`scores/${c}`).once('value');
+    const data = snap.val() || {};
+    const entries = Object.values(data);
+    const byName = {};
+    entries.forEach(e => {
+      const key = `${e.name}_${e.challenge}`;
+      if (!byName[key] || e.score > byName[key].score) byName[key] = e;
+    });
+    Object.values(byName).forEach(e => allRankingData.push(e));
+  }
+  filterRanking('all', document.querySelector('.rk-tab.active'));
+}
+
+function filterRanking(filter, btn) {
+  document.querySelectorAll('.rk-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  let data = filter === 'all' ? allRankingData : allRankingData.filter(e => e.challenge == filter);
+  data = data.sort((a,b) => b.score - a.score || a.time - b.time).slice(0,20);
+  const medals = ['🥇','🥈','🥉'];
+  const challengeEmoji = {1:'🌱',2:'🔥',3:'⚡'};
+  const el = document.getElementById('rk-list');
+  if (!data.length) { el.innerHTML = '<div class="no-scores" style="color:#888;padding:20px 0;">Aún no hay resultados</div>'; return; }
+  el.innerHTML = data.map((p,i) => `
+    <div class="rk-row ${i===0?'rk1':i===1?'rk2':i===2?'rk3':''}">
+      <span class="rk-pos">${medals[i]||(i+1)}</span>
+      <div style="flex:1">
+        <div class="rk-name">${p.name}</div>
+        <div class="rk-challenge">${challengeEmoji[p.challenge]||''} Desafío ${p.challenge} · ${p.correct}/15 correctas · ${formatTime(p.time)}</div>
+      </div>
+      <span class="rk-score">${p.score} pts</span>
+    </div>`).join('');
+}
+
+// =============================================
+// QUIZ LOGIC
+// =============================================
+function startQuiz() {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) { alert('Por favor ingresa tu nombre'); return; }
+  playerName = name;
+  currentQ = 0; score = 0; correctCount = 0; timeLeft = 15*60;
+  document.getElementById('sidebar-name').textContent = name;
+  document.getElementById('sidebar-score').textContent = '0';
+  document.getElementById('sidebar-detail').textContent = 'puntos';
+  const ch = CHALLENGES[selectedChallenge];
+  document.getElementById('challenge-tag').textContent = ch.emoji + ' ' + ch.name;
+  showScreen('screen-quiz');
+  renderQuestion();
+  startTimer();
+  startRankingListener();
+}
+
+function renderQuestion() {
+  const q = CHALLENGES[selectedChallenge].questions[currentQ];
+  const total = CHALLENGES[selectedChallenge].questions.length;
+  document.getElementById('q-counter').textContent = `Pregunta ${currentQ+1} de ${total}`;
+  document.getElementById('progress-fill').style.width = `${((currentQ+1)/total)*100}%`;
+  document.getElementById('q-tag').textContent = q.bono;
+  document.getElementById('q-text').textContent = q.text;
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = q.options.map((opt,i) =>
+    `<button class="option-btn" onclick="selectAnswer(${i})">${String.fromCharCode(65+i)}) ${opt}</button>`
+  ).join('');
+  const fb = document.getElementById('feedback-box');
+  fb.style.display = 'none';
+  fb.className = 'feedback-box';
+  const btnNext = document.getElementById('btn-next');
+  btnNext.disabled = true;
+  btnNext.textContent = currentQ === total-1 ? 'Ver Resultados 🎉' : 'Siguiente →';
+  answered = false;
+}
+
+function selectAnswer(idx) {
+  if (answered) return;
+  answered = true;
+  const q = CHALLENGES[selectedChallenge].questions[currentQ];
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons.forEach(b => b.disabled = true);
+  const isCorrect = idx === q.correct;
+  if (isCorrect) { score += 100; correctCount++; }
+  buttons[idx].classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) buttons[q.correct].classList.add('correct');
+  const fb = document.getElementById('feedback-box');
+  fb.style.display = 'block';
+  fb.className = 'feedback-box ' + (isCorrect ? 'correct' : 'wrong');
+  fb.innerHTML = (isCorrect ? '✅ ' : '❌ ') + q.feedback;
+  document.getElementById('sidebar-score').textContent = score;
+  document.getElementById('sidebar-detail').textContent = `${correctCount} correctas · ${currentQ+1} respondidas`;
+  document.getElementById('btn-next').disabled = false;
+}
+
+function nextQuestion() {
+  currentQ++;
+  if (currentQ >= CHALLENGES[selectedChallenge].questions.length) {
+    finishQuiz();
+  } else {
+    renderQuestion();
+  }
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  document.getElementById('timer-box').classList.remove('urgent');
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById('timer-box').textContent = formatTime(timeLeft);
+    if (timeLeft <= 60) document.getElementById('timer-box').classList.add('urgent');
+    if (timeLeft <= 0) { clearInterval(timerInterval); finishQuiz(); }
+  }, 1000);
+}
+
+async function finishQuiz() {
+  clearInterval(timerInterval);
+  if (rankingListener) rankingListener.off();
+  saveScore();
+  // Get top for this challenge
+  const snap = await db.ref(`scores/${selectedChallenge}`).once('value');
+  const data = snap.val() || {};
+  const byName = {};
+  Object.values(data).forEach(e => {
+    if (!byName[e.name] || e.score > byName[e.name].score) byName[e.name] = e;
+  });
+  const board = Object.values(byName).sort((a,b) => b.score - a.score || a.time - b.time);
+  const ch = CHALLENGES[selectedChallenge];
+  document.getElementById('results-meta').textContent = `${playerName} · ${ch.emoji} ${ch.name}`;
+  document.getElementById('results-score').textContent = score;
+  document.getElementById('results-label').textContent = `puntos de ${CHALLENGES[selectedChallenge].questions.length * 100}`;
+  document.getElementById('res-correct').textContent = `${correctCount}/15`;
+  document.getElementById('res-time').textContent = formatTime(15*60 - timeLeft);
+  document.getElementById('res-challenge').textContent = `${ch.emoji} ${selectedChallenge}`;
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('podium-list').innerHTML = board.slice(0,5).map((p,i) => {
+    const isMe = p.name === playerName;
+    const cls = i===0?'p1':i===1?'p2':i===2?'p3':'';
+    return `<div class="podium-row ${cls} ${isMe?'pme':''}">
+      <span class="podium-pos">${medals[i]||(i+1)}</span>
+      <span class="podium-name">${p.name}${isMe?' ✨':''}</span>
+      <span class="podium-score">${p.score} pts · ${p.correct}/15</span>
+    </div>`;
+  }).join('');
+  showScreen('screen-results');
+}
+
+async function showRanking() {
+  showScreen('screen-ranking');
+  document.getElementById('rk-list').innerHTML = '<div style="color:#888;text-align:center;padding:20px;">Cargando...</div>';
+  await loadAllRanking();
+}
+
+function goHome() {
+  document.getElementById('input-name').value = '';
+  showScreen('screen-register');
+}
+
+document.getElementById('input-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startQuiz();
+});
+</script>
+</body>
+</html>
