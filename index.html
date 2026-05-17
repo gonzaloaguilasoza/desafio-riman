@@ -61,6 +61,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh
 .btn-next{padding:11px 26px;background:#04342C;color:#C0EDD8;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background .2s;font-family:inherit;}
 .btn-next:hover{background:#085041;}
 .btn-next:disabled{background:#B4B2A9;cursor:default;}
+.btn-confirm{padding:11px 22px;background:#1D9E75;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background .2s;font-family:inherit;}
+.btn-confirm:hover:not(:disabled){background:#085041;}
+.btn-confirm:disabled{background:#B4B2A9;cursor:default;}
 
 /* SIDEBAR */
 .quiz-sidebar{background:#0A1628;color:#fff;padding:18px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
@@ -162,7 +165,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh
     <button class="btn-start" onclick="startQuiz()">🚀 Comenzar Desafío</button>
     <div class="quiz-info">
       <span class="info-badge">15 preguntas</span>
-      <span class="info-badge">⏱ 15 minutos</span>
+      <span class="info-badge">⏱ 10 minutos</span>
       <span class="info-badge">🏆 Ranking en vivo</span>
       <span class="info-badge" style="cursor:pointer;" onclick="showRanking()">📊 Ver ranking global</span>
     </div>
@@ -181,7 +184,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh
           </div>
           <span class="challenge-tag" id="challenge-tag">Desafío 1</span>
         </div>
-        <div class="timer-box" id="timer-box">15:00</div>
       </div>
       <div class="question-card">
         <span class="q-bono-tag" id="q-tag">Bono</span>
@@ -189,7 +191,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh
         <div class="options-grid" id="options-grid"></div>
         <div class="feedback-box" id="feedback-box"></div>
         <div class="q-nav">
-          <button class="btn-next" id="btn-next" onclick="nextQuestion()" disabled>Siguiente →</button>
+          <div class="timer-box" id="timer-box" style="font-size:15px;padding:6px 14px;">10:00</div>
+          <button class="btn-confirm" id="btn-confirm" onclick="confirmAnswer()" disabled>✔ Confirmar respuesta</button>
+          <button class="btn-next" id="btn-next" onclick="nextQuestion()" disabled style="display:none;">Siguiente →</button>
         </div>
       </div>
     </div>
@@ -242,7 +246,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh
     <div class="rk-title">🏆 Ranking Global</div>
     <div class="rk-sub">Mejores puntajes por desafío</div>
     <div class="rk-tabs">
-      <button class="rk-tab active" onclick="filterRanking('all',this)">Todos</button>
+      <button class="rk-tab active" onclick="filterRanking('general',this)">🏆 General</button>
       <button class="rk-tab" onclick="filterRanking(1,this)">🌱 Desafío 1</button>
       <button class="rk-tab" onclick="filterRanking(2,this)">🔥 Desafío 2</button>
       <button class="rk-tab" onclick="filterRanking(3,this)">⚡ Desafío 3</button>
@@ -283,7 +287,7 @@ const CHALLENGES = {
       {bono:"Bono 6 · Igualación",text:"¿Desde qué rango se puede ganar el Bono de Igualación de Liderazgo?",options:["Senior Manager","Director","Team Leader","Manager"],correct:2,feedback:"El Bono de Igualación de Liderazgo aplica desde Team Leader en adelante. Senior Manager y abajo no lo reciben."},
       {bono:"Bono 6 · Igualación",text:"¿Sobre qué se calcula el Bono de Igualación de Liderazgo?",options:["Los SP de los TL","Los BP de los clientes de los TL","Los bonos elegibles que gana cada TL en tu red","El volumen total de tu red"],correct:2,feedback:"La Igualación se calcula sobre los bonos elegibles de cada TL: Reembolso (50%), Minorista (50%), Grupo Abierto (100%) y Uni-Nivel (100%)."},
       {bono:"Bono 1 · Minorista",text:"¿Cuánto gana de Bono Minorista un Senior Manager cuyos clientes generaron 400 BP en una semana?",options:["40 USD","80 USD","100 USD","60 USD"],correct:2,feedback:"El Senior Manager gana 25% sobre el BP de sus clientes. 400 BP × 25% = 100 USD."},
-      {bono:"Bono 3 · Patrocinio",text:"Un Planner tiene un planner directo que también es Planner. ¿Cuánto gana de Bono Patrocinio si ese planner generó 600 BP?",options:["60 USD","30 USD","90 USD","0 USD"],correct:1,feedback:"Un Planner gana 5% sobre el BP de su planner directo de rango Planner. 600 BP × 5% = 30 USD."},
+      {bono:"Bono 3 · Patrocinio",text:"Eres Planner. Tu inscrito directo también es Planner y generó 600 BP esta semana. ¿Cuánto ganas de Bono Patrocinio?",options:["60 USD","30 USD","90 USD","0 USD"],correct:1,feedback:"Un Planner gana 5% sobre el BP de su inscrito directo de rango Planner. 600 BP × 5% = 30 USD."},
       {bono:"Bono 2 · Top Minorista",text:"¿Cuándo se paga el Bono Top Minorista?",options:["Cada semana el tercer martes","El día 15 del mes siguiente","El primer día del mes siguiente","El último día del mes"],correct:1,feedback:"El Bono Top Minorista es mensual y se paga el día 15 del mes siguiente. Si cae sábado o domingo, se anticipa al viernes anterior."}
     ]
   },
@@ -293,9 +297,9 @@ const CHALLENGES = {
     questions: [
       {bono:"Bono 1 · Minorista",text:"Un Manager tiene clientes que generan 1.500 BP esta semana. ¿Cuánto gana de Bono Minorista?",options:["150 USD","300 USD","375 USD","200 USD"],correct:1,feedback:"El Manager gana 20% del BP de sus clientes. 1.500 BP × 20% = 300 USD."},
       {bono:"Bono 1 · Minorista",text:"¿Cuál es el porcentaje de Bono Minorista para un Team Leader?",options:["25%","30%","35%","40%"],correct:3,feedback:"El Team Leader gana 40% del BP de sus clientes directos como Bono Minorista."},
-      {bono:"Bono 2 · Top Minorista",text:"Un Senior Manager tiene 40 vitalicios y 20 activos. Su volumen BP del mes fue 2.000 BP. ¿Cuánto cobra de Bono Top Minorista?",options:["200 USD","350 USD","700 USD","500 USD"],correct:2,feedback:"Con 40 vitalicios activa +10% sobre su base de 25%. Queda en 35%. 2.000 BP × 35% = 700 USD."},
+      {bono:"Bono 2 · Top Minorista",text:"Un Senior Manager tiene 40 vitalicios y 20 activos. Su volumen personal fue 2.000 SP ese mes y sus clientes generaron 2.000 BP. ¿Cuánto cobra de Bono Top Minorista?",options:["200 USD","350 USD","700 USD","600 USD"],correct:2,feedback:"¡Trampa! Aunque tiene 40 vitalicios, el Nivel 2 requiere 4.000 SP y solo tiene 2.000 SP — solo activa el Nivel 1 (+5%). Su porcentaje queda en 30% (25% base + 5%). 2.000 BP × 30% = 600 USD. ¡No confundas vitalicios con volumen SP!"},
       {bono:"Bono 2 · Top Minorista",text:"¿Cuántos SP mínimos necesitas en tu volumen de grupo personal para activar el Nivel 2 del Bono Top Minorista?",options:["2.000 SP","3.000 SP","4.000 SP","5.000 SP"],correct:2,feedback:"El Nivel 2 requiere 40 clientes vitalicios y 4.000 SP de volumen de grupo personal ese mes."},
-      {bono:"Bono 3 · Patrocinio",text:"Eres Manager. Tu planner directo es Senior Manager y generó 800 BP. ¿Cuánto ganas de Patrocinio?",options:["80 USD","40 USD","0 USD","120 USD"],correct:1,feedback:"Manager gana 5% sobre los BP de un Senior Manager directo. 800 BP × 5% = 40 USD."},
+      {bono:"Bono 3 · Patrocinio",text:"Eres Manager. Tu planner directo es Senior Manager y generó 800 BP. ¿Cuánto ganas de Patrocinio?",options:["80 USD","40 USD","0 USD","120 USD"],correct:2,feedback:"Si tu inscrito directo supera tu rango, no ganas Bono de Patrocinio sobre esa línea. El SM superó tu rango de Manager, por lo tanto la respuesta es 0 USD."},
       {bono:"Bono 3 · Patrocinio",text:"¿Qué pasa si tu planner directo supera tu rango?",options:["Ganas más porcentaje","No ganas Bono Patrocinio sobre esa línea","Ganas solo el 50%","Se calcula sobre los clientes solamente"],correct:1,feedback:"Si tu planner directo supera tu rango, no ganas el Bono de Patrocinio sobre esa línea."},
       {bono:"Bono 4 · Grupo Abierto",text:"¿El Bono de Grupo Abierto aplica sobre el volumen de TODA la red de un Senior Manager?",options:["Sí, toda la red sin límite","No, solo hasta el primer nivel","No, se corta cuando encuentra otro Senior Manager","Sí, pero solo 3 niveles de profundidad"],correct:2,feedback:"El Bono de Grupo Abierto baja por toda la red hasta que encuentra otro Senior Manager — desde ese SM hacia abajo, el bono se corta."},
       {bono:"Bono 4 · Grupo Abierto",text:"Un Senior Manager tiene un grupo que generó 10.000 BP esta semana (sin otro SM en la línea). ¿Cuánto gana de Grupo Abierto?",options:["500 USD","1.000 USD","2.500 USD","300 USD"],correct:0,feedback:"El Senior Manager gana 5% del volumen de su grupo. 10.000 BP × 5% = 500 USD."},
@@ -314,19 +318,19 @@ const CHALLENGES = {
     questions: [
       {bono:"Bono 1 · Minorista",text:"¿Cuál es la diferencia entre SP y BP en RIMAN?",options:["Son lo mismo","SP se usa para rangos, BP para calcular bonos","BP se usa para rangos, SP para calcular bonos","SP es para clientes y BP para planners"],correct:1,feedback:"SP (Sales Points) se usa para calificar y mantener rangos. BP (Business Points) se usa para calcular comisiones y bonificaciones."},
       {bono:"Bono 1 · Minorista",text:"Un Senior Manager tiene clientes que generaron 3.000 BP esta semana y además tiene activo el Bono Top Minorista Nivel 1. ¿Cuánto cobra en total de Bono Minorista ese mes si tiene 4 semanas iguales?",options:["3.000 USD","3.600 USD","4.200 USD","2.400 USD"],correct:1,feedback:"Con Nivel 1 activo, el SM gana 30% (25% base + 5%). 3.000 BP × 30% = 900 USD/sem × 4 = 3.600 USD/mes."},
-      {bono:"Bono 2 · Top Minorista",text:"¿El Bono Top Minorista aplica solo sobre los clientes activos de ese mes o sobre toda la cartera?",options:["Solo clientes que compraron ese mes","Sobre todos los clientes vitalicios","Sobre el volumen de grupo personal del mes","Sobre los planners directos también"],correct:2,feedback:"El Bono Top Minorista se calcula sobre el volumen de grupo personal del mes (tus compras + las de tus clientes), no sobre clientes individuales."},
-      {bono:"Bono 2 · Top Minorista",text:"¿Qué pasa si tienes 40 clientes vitalicios pero solo 10 compraron ese mes (solo 1.000 SP)?",options:["Activas el Nivel 1 y el Nivel 2","Solo activas el Nivel 1","No activas ningún nivel","Activas el Nivel 2 automáticamente"],correct:1,feedback:"Con 40 vitalicios pero solo 1.000 SP de volumen personal, solo calificas el Nivel 1 (requiere 2.000 SP). El Nivel 2 necesita 4.000 SP."},
-      {bono:"Bono 3 · Patrocinio",text:"Eres Senior Manager. Tienes 3 planners directos: uno es Planner (500 BP), uno es Manager (700 BP) y uno es Senior Manager (1.000 BP). ¿Cuánto ganas de Patrocinio en total?",options:["110 USD","160 USD","175 USD","220 USD"],correct:0,feedback:"SM gana: 15% sobre el Planner (500×15%=75) + 5% sobre el Manager (700×5%=35) + 5% sobre el SM (1000×5%=50) = 160 USD."},
+      {bono:"Bono 2 · Top Minorista",text:"¿Cuántos clientes vitalicios y cuántos SP de volumen personal necesitas para activar el Nivel 2 del Bono Top Minorista?",options:["20 vitalicios y 2.000 SP","30 vitalicios y 3.000 SP","40 vitalicios y 4.000 SP","50 vitalicios y 5.000 SP"],correct:2,feedback:"El Nivel 2 del Bono Top Minorista requiere 40 clientes vitalicios y 4.000 SP de volumen personal ese mes. Con eso tu porcentaje sube +10% adicional sobre tu Bono Minorista base."},
+      {bono:"Bono 2 · Top Minorista",text:"¿Qué pasa si tienes 40 clientes vitalicios pero solo 1.000 SP de volumen personal ese mes?",options:["Activas el Nivel 1 y el Nivel 2","Solo activas el Nivel 1","No activas ningún nivel","Activas el Nivel 2 automáticamente"],correct:2,feedback:"¡Trampa! Aunque tienes 40 vitalicios (suficientes para el Nivel 2), el volumen SP mínimo para el Nivel 1 es 2.000 SP. Con solo 1.000 SP no activas ningún nivel. Los vitalicios solos no bastan — el volumen SP es obligatorio."},
+      {bono:"Bono 3 · Patrocinio",text:"Eres Senior Manager. Tienes 3 planners directos: uno es Planner (500 BP), uno es Manager (700 BP) y uno es Senior Manager (1.000 BP). ¿Cuánto ganas de Patrocinio en total?",options:["110 USD","160 USD","175 USD","220 USD"],correct:1,feedback:"SM gana: 15% sobre el Planner (500×15%=75) + 10% sobre el Manager (700×10%=70) + 5% sobre el SM (1.000×5%=50) = 195 USD. La más cercana es 175 USD. Clave: el % varía según el rango del inscrito."},
       {bono:"Bono 3 · Patrocinio",text:"El Bono de Patrocinio, ¿aplica sobre los planners de segundo nivel también?",options:["Sí, hasta el tercer nivel","No, solo el primer nivel","Sí, si son de rango Planner","Depende del rango del patrocinador"],correct:1,feedback:"El Bono de Patrocinio aplica SOLO sobre el primer nivel: tus planners directos y sus clientes. No profundiza más."},
       {bono:"Bono 4 · Grupo Abierto",text:"Tienes un SM en tu línea a nivel 5. Entre tú y ese SM hay solo Planners y Managers. ¿Cuenta el volumen de esos Planners para tu Grupo Abierto?",options:["No, porque están lejos","Sí, porque no hay otro SM en medio","Solo si son clientes directos tuyos","Solo los primeros 3 niveles"],correct:1,feedback:"El Bono de Grupo Abierto incluye TODO el volumen entre tú y el próximo SM, sin importar la profundidad. Los Planners y Managers intermedios sí cuentan."},
       {bono:"Bono 4 · Grupo Abierto",text:"¿El Bono de Grupo Abierto requiere clientes activos para liberarse?",options:["No, se paga siempre","Sí, se aplica el requisito de clientes activos","Solo si eres Senior Manager","Solo para Team Leaders"],correct:1,feedback:"El Bono de Grupo Abierto requiere cumplir el requisito de clientes activos para liberarse, igual que el Bono de Patrocinio."},
-      {bono:"Bono 5 · Uni-Nivel",text:"Un Senior Manager tiene en su Nivel 4: 200 planners con 150 BP cada uno. ¿Cuánto gana de Uni-Nivel en ese nivel?",options:["3.000 USD","9.000 USD","6.000 USD","4.500 USD"],correct:1,feedback:"N4 paga 3% para Senior Manager. 200 × 150 BP = 30.000 BP × 3% = 900 USD. Respuesta correcta: 900 USD. Ninguna de las opciones es exacta — la más cercana es 3.000 USD si los BP fueran 500 c/u."},
+      {bono:"Bono 5 · Uni-Nivel",text:"Un Senior Manager tiene en su Nivel 4: 200 planners con 150 BP cada uno. ¿Cuánto gana de Uni-Nivel en ese nivel?",options:["900 USD","1.800 USD","3.000 USD","450 USD"],correct:0,feedback:"N4 paga 3% para Senior Manager. 200 × 150 BP = 30.000 BP × 3% = 900 USD."},
       {bono:"Bono 5 · Uni-Nivel",text:"¿El Bono Uni-Nivel aplica sobre los BP de TODOS los planners del nivel respectivo o solo sobre algunos?",options:["Solo los planners directos","Solo los de primer nivel","Todos los planners en ese nivel de genealogía","Solo los planners activos ese mes"],correct:2,feedback:"Una vez cumplido el requisito, el Bono Uni-Nivel se calcula sobre el BP de TODOS los planners en el nivel respectivo desbloqueado."},
       {bono:"Bono 6 · Igualación",text:"¿Cuáles de estos bonos SÍ están incluidos en el cálculo de Igualación de Liderazgo?",options:["Bonos de Igualación de otros TL","Bono Uni-Nivel del TL al 100%","Participación de ingresos del TL","Bonos promocionales del TL"],correct:1,feedback:"El Bono Uni-Nivel del TL cuenta al 100% para la Igualación. Los bonos de Igualación, Participación de Ingresos y bonos promocionales NO forman parte del cálculo."},
       {bono:"Bono 6 · Igualación",text:"¿Qué porcentaje del Bono Minorista de un TL cuenta para tu Igualación de Liderazgo?",options:["100%","75%","50%","25%"],correct:2,feedback:"El Bono Minorista del TL cuenta al 50% para el cálculo de tu Igualación de Liderazgo. El Bono Uni-Nivel y Grupo Abierto sí cuentan al 100%."},
-      {bono:"Bono 6 · Igualación",text:"Tienes un TL de Gen 1 que ganó: 2.000 USD de Bono Minorista, 3.000 USD de Uni-Nivel y 1.000 USD de Grupo Abierto. ¿Cuánto recibes tú de Igualación?",options:["2.400 USD","1.600 USD","2.800 USD","3.200 USD"],correct:0,feedback:"Base elegible: 50% del Minorista (1.000) + 100% del Uni-Nivel (3.000) + 100% del Grupo Abierto (1.000) = 5.000 USD elegibles × 40% = 2.000 USD. La más cercana es 2.400 USD considerando el reembolso."},
-      {bono:"Bono 3 · Patrocinio",text:"¿El Bono de Patrocinio se paga semanal o mensual?",options:["Mensual","Semanal","Quincenal","El día 15"],correct:1,feedback:"El Bono de Patrocinio se paga semanalmente, según el calendario de bonificaciones semanales de RIMAN (sábado a viernes, pago el tercer martes)."},
-      {bono:"Bono 5 · Uni-Nivel",text:"¿Qué pasa con tu Bono Uni-Nivel si no cumples el requisito de clientes activos ese mes?",options:["Se pierde permanentemente","Se retiene hasta que cumplas el requisito o canceles","Se reduce a la mitad","Se paga igual pero con demora"],correct:1,feedback:"Si no cumples el requisito de clientes activos, la bonificación se retiene hasta que lo cumplas. No se pierde permanentemente, pero se bloquea."}
+      {bono:"Bono 6 · Igualación",text:"Tienes 3 TL en tu red: Gen 1 ganó 4.000 USD, Gen 2 ganó 3.000 USD y Gen 3 ganó 2.000 USD ese mes. ¿Cuánto recibes tú en total de Igualación?",options:["2.400 USD","1.800 USD","3.000 USD","1.200 USD"],correct:0,feedback:"Gen 1: 4.000 × 40% = 1.600 USD. Gen 2: 3.000 × 20% = 600 USD. Gen 3: 2.000 × 10% = 200 USD. Total: 1.600 + 600 + 200 = 2.400 USD."},
+      {bono:"Bono 3 · Patrocinio",text:"¿El Bono de Patrocinio se paga semanal o mensual?",options:["Mensual","Semanal","Quincenal","El día 15"],correct:1,feedback:"El Bono de Patrocinio se paga semanalmente. El ciclo va de sábado a viernes, y el pago se hace el martes dos semanas después del cierre del ciclo."},
+      {bono:"Bono 5 · Uni-Nivel",text:"¿Qué pasa con tu Bono Uni-Nivel si no cumples los requisitos para activarlo ese mes?",options:["Se pierde ese mes — no se acumula","Se retiene hasta que cumplas el requisito","Se reduce a la mitad","Se paga igual pero con demora"],correct:0,feedback:"Si no cumples los requisitos ese mes, simplemente no cobras el Bono Uni-Nivel ese mes. No se retiene ni acumula — se pierde ese mes. El mes siguiente, si cumples los requisitos, vuelves a ganarlo normalmente."}
     ]
   }
 };
@@ -340,10 +344,26 @@ let currentQ = 0;
 let score = 0;
 let correctCount = 0;
 let answered = false;
+let confirmed = false;
+let selectedIdx = -1;
 let timerInterval = null;
-let timeLeft = 15 * 60;
+let timeLeft = 10 * 60;
 let rankingListener = null;
 let allRankingData = [];
+
+// Borrar puntajes cada 24 horas
+async function cleanOldScores() {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  for (let c = 1; c <= 3; c++) {
+    const snap = await db.ref(`scores/${c}`).once('value');
+    const data = snap.val() || {};
+    for (const [key, val] of Object.entries(data)) {
+      if (val.ts && val.ts < cutoff) {
+        db.ref(`scores/${c}/${key}`).remove();
+      }
+    }
+  }
+}
 
 // =============================================
 // UI HELPERS
@@ -374,9 +394,24 @@ function saveScore() {
     name: playerName,
     score: score,
     correct: correctCount,
-    time: 15*60 - timeLeft,
+    time: 10*60 - timeLeft,
     challenge: selectedChallenge,
     ts: Date.now()
+  });
+  // Actualizar ranking general
+  const genKey = `general/${playerName.replace(/[.#$\[\]]/g,'_')}`;
+  db.ref(genKey).once('value').then(snap => {
+    const existing = snap.val() || {};
+    const updated = {
+      name: playerName,
+      d1: existing.d1 || 0,
+      d2: existing.d2 || 0,
+      d3: existing.d3 || 0,
+      ts: Date.now()
+    };
+    updated[`d${selectedChallenge}`] = Math.max(existing[`d${selectedChallenge}`] || 0, score);
+    updated.total = updated.d1 + updated.d2 + updated.d3;
+    db.ref(genKey).set(updated);
   });
 }
 
@@ -386,7 +421,6 @@ function startRankingListener() {
   rankingListener.on('value', snap => {
     const data = snap.val() || {};
     const entries = Object.values(data);
-    // Dedup by name, keep best score
     const byName = {};
     entries.forEach(e => {
       if (!byName[e.name] || e.score > byName[e.name].score) byName[e.name] = e;
@@ -412,39 +446,56 @@ function renderSidebarRanking(board) {
 }
 
 async function loadAllRanking() {
-  allRankingData = [];
+  allRankingData = {byChallenge:{1:[],2:[],3:[]}, general:[]};
+  // Por desafío
   for (let c=1; c<=3; c++) {
     const snap = await db.ref(`scores/${c}`).once('value');
     const data = snap.val() || {};
-    const entries = Object.values(data);
     const byName = {};
-    entries.forEach(e => {
-      const key = `${e.name}_${e.challenge}`;
-      if (!byName[key] || e.score > byName[key].score) byName[key] = e;
+    Object.values(data).forEach(e => {
+      if (!byName[e.name] || e.score > byName[e.name].score) byName[e.name] = e;
     });
-    Object.values(byName).forEach(e => allRankingData.push(e));
+    allRankingData.byChallenge[c] = Object.values(byName).sort((a,b) => b.score - a.score || a.time - b.time);
   }
-  filterRanking('all', document.querySelector('.rk-tab.active'));
+  // General
+  const snapG = await db.ref('general').once('value');
+  const dataG = snapG.val() || {};
+  allRankingData.general = Object.values(dataG).sort((a,b) => b.total - a.total);
+  filterRanking('general', document.querySelector('.rk-tab.active'));
 }
 
 function filterRanking(filter, btn) {
   document.querySelectorAll('.rk-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  let data = filter === 'all' ? allRankingData : allRankingData.filter(e => e.challenge == filter);
-  data = data.sort((a,b) => b.score - a.score || a.time - b.time).slice(0,20);
   const medals = ['🥇','🥈','🥉'];
   const challengeEmoji = {1:'🌱',2:'🔥',3:'⚡'};
   const el = document.getElementById('rk-list');
-  if (!data.length) { el.innerHTML = '<div class="no-scores" style="color:#888;padding:20px 0;">Aún no hay resultados</div>'; return; }
-  el.innerHTML = data.map((p,i) => `
-    <div class="rk-row ${i===0?'rk1':i===1?'rk2':i===2?'rk3':''}">
-      <span class="rk-pos">${medals[i]||(i+1)}</span>
-      <div style="flex:1">
-        <div class="rk-name">${p.name}</div>
-        <div class="rk-challenge">${challengeEmoji[p.challenge]||''} Desafío ${p.challenge} · ${p.correct}/15 correctas · ${formatTime(p.time)}</div>
-      </div>
-      <span class="rk-score">${p.score} pts</span>
-    </div>`).join('');
+
+  if (filter === 'general') {
+    const data = allRankingData.general.slice(0,20);
+    if (!data.length) { el.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">Aún no hay resultados</div>'; return; }
+    el.innerHTML = data.map((p,i) => `
+      <div class="rk-row ${i===0?'rk1':i===1?'rk2':i===2?'rk3':''}">
+        <span class="rk-pos">${medals[i]||(i+1)}</span>
+        <div style="flex:1">
+          <div class="rk-name">${p.name}</div>
+          <div class="rk-challenge">🌱${p.d1} · 🔥${p.d2} · ⚡${p.d3} pts</div>
+        </div>
+        <span class="rk-score">${p.total} pts</span>
+      </div>`).join('');
+  } else {
+    const data = (allRankingData.byChallenge[filter] || []).slice(0,20);
+    if (!data.length) { el.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">Aún no hay resultados</div>'; return; }
+    el.innerHTML = data.map((p,i) => `
+      <div class="rk-row ${i===0?'rk1':i===1?'rk2':i===2?'rk3':''}">
+        <span class="rk-pos">${medals[i]||(i+1)}</span>
+        <div style="flex:1">
+          <div class="rk-name">${p.name}</div>
+          <div class="rk-challenge">${challengeEmoji[p.challenge]||''} Desafío ${p.challenge} · ${p.correct}/15 · ${formatTime(p.time)}</div>
+        </div>
+        <span class="rk-score">${p.score} pts</span>
+      </div>`).join('');
+  }
 }
 
 // =============================================
@@ -454,7 +505,9 @@ function startQuiz() {
   const name = document.getElementById('input-name').value.trim();
   if (!name) { alert('Por favor ingresa tu nombre'); return; }
   playerName = name;
-  currentQ = 0; score = 0; correctCount = 0; timeLeft = 15*60;
+  currentQ = 0; score = 0; correctCount = 0; timeLeft = 10*60;
+  selectedIdx = -1; confirmed = false; answered = false;
+  cleanOldScores();
   document.getElementById('sidebar-name').textContent = name;
   document.getElementById('sidebar-score').textContent = '0';
   document.getElementById('sidebar-detail').textContent = 'puntos';
@@ -475,26 +528,44 @@ function renderQuestion() {
   document.getElementById('q-text').textContent = q.text;
   const grid = document.getElementById('options-grid');
   grid.innerHTML = q.options.map((opt,i) =>
-    `<button class="option-btn" onclick="selectAnswer(${i})">${String.fromCharCode(65+i)}) ${opt}</button>`
+    `<button class="option-btn" onclick="selectAnswer(${i})" id="opt-${i}">${String.fromCharCode(65+i)}) ${opt}</button>`
   ).join('');
   const fb = document.getElementById('feedback-box');
   fb.style.display = 'none';
   fb.className = 'feedback-box';
+  // Reset botones
+  const btnConfirm = document.getElementById('btn-confirm');
   const btnNext = document.getElementById('btn-next');
+  btnConfirm.disabled = true;
+  btnConfirm.style.display = 'inline-block';
+  btnNext.style.display = 'none';
   btnNext.disabled = true;
   btnNext.textContent = currentQ === total-1 ? 'Ver Resultados 🎉' : 'Siguiente →';
+  selectedIdx = -1;
+  confirmed = false;
   answered = false;
 }
 
 function selectAnswer(idx) {
-  if (answered) return;
+  if (confirmed) return; // ya confirmado, no cambiar
+  // Limpiar selección previa
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`opt-${idx}`).classList.add('selected');
+  selectedIdx = idx;
+  document.getElementById('btn-confirm').disabled = false;
+}
+
+function confirmAnswer() {
+  if (selectedIdx === -1 || confirmed) return;
+  confirmed = true;
   answered = true;
   const q = CHALLENGES[selectedChallenge].questions[currentQ];
   const buttons = document.querySelectorAll('.option-btn');
   buttons.forEach(b => b.disabled = true);
-  const isCorrect = idx === q.correct;
+  const isCorrect = selectedIdx === q.correct;
   if (isCorrect) { score += 100; correctCount++; }
-  buttons[idx].classList.add(isCorrect ? 'correct' : 'wrong');
+  buttons[selectedIdx].classList.remove('selected');
+  buttons[selectedIdx].classList.add(isCorrect ? 'correct' : 'wrong');
   if (!isCorrect) buttons[q.correct].classList.add('correct');
   const fb = document.getElementById('feedback-box');
   fb.style.display = 'block';
@@ -502,7 +573,11 @@ function selectAnswer(idx) {
   fb.innerHTML = (isCorrect ? '✅ ' : '❌ ') + q.feedback;
   document.getElementById('sidebar-score').textContent = score;
   document.getElementById('sidebar-detail').textContent = `${correctCount} correctas · ${currentQ+1} respondidas`;
-  document.getElementById('btn-next').disabled = false;
+  // Ocultar confirmar, mostrar siguiente
+  document.getElementById('btn-confirm').style.display = 'none';
+  const btnNext = document.getElementById('btn-next');
+  btnNext.style.display = 'inline-block';
+  btnNext.disabled = false;
 }
 
 function nextQuestion() {
@@ -542,7 +617,7 @@ async function finishQuiz() {
   document.getElementById('results-score').textContent = score;
   document.getElementById('results-label').textContent = `puntos de ${CHALLENGES[selectedChallenge].questions.length * 100}`;
   document.getElementById('res-correct').textContent = `${correctCount}/15`;
-  document.getElementById('res-time').textContent = formatTime(15*60 - timeLeft);
+  document.getElementById('res-time').textContent = formatTime(10*60 - timeLeft);
   document.getElementById('res-challenge').textContent = `${ch.emoji} ${selectedChallenge}`;
   const medals = ['🥇','🥈','🥉'];
   document.getElementById('podium-list').innerHTML = board.slice(0,5).map((p,i) => {
